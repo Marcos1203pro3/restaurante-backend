@@ -34,6 +34,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // Fuerza 12 para mayor seguridad en el hash de Aiven
         return new BCryptPasswordEncoder(12);
     }
 
@@ -53,12 +54,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+        // En producción (Render), lo ideal es poner la URL de tu Frontend aquí
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
@@ -67,19 +70,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Deshabilitado para APIs REST (Stateless)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // No usamos JSESSIONID
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Peticiones OPTIONS (CORS) siempre permitidas
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Rutas de Autenticación (Login y Registro)
+                        // Esto permite que /api/auth/login y /api/auth/register sean públicos
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // 3. Recursos públicos (Menú del restaurante)
                         .requestMatchers(HttpMethod.GET, "/api/productos/menu").permitAll()
 
-                        // --- PUERTA ABIERTA TEMPORAL PARA CREAR AL ADMIN ---
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-
-                        // Reglas restrictivas (vienen después)
+                        // 4. Reglas por Roles (Ajustadas a tu modelo de negocio)
                         .requestMatchers("/api/usuarios/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/roles/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/reportes/**").hasAnyRole("ADMIN", "GERENTE")
@@ -88,9 +94,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/proveedores/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/cocina/**").hasAnyRole("ADMIN", "GERENTE", "COCINERO")
                         .requestMatchers("/api/turnos/**").hasAnyRole("ADMIN", "GERENTE", "CAJERO")
+
+                        // 5. Cualquier otra ruta requiere Token válido
                         .anyRequest().authenticated()
                 )
+                // Usamos nuestro proveedor con BCrypt y UserDetailsService
                 .authenticationProvider(authenticationProvider())
+                // Inyectamos el filtro JWT antes del filtro de usuario/password de Spring
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
