@@ -34,7 +34,6 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Fuerza 12 para mayor seguridad en el hash de Aiven
         return new BCryptPasswordEncoder(12);
     }
 
@@ -54,10 +53,22 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // En producción (Render), lo ideal es poner la URL de tu Frontend aquí
+        // IMPORTANTE: Permitir el origen de tu frontend en Render si es posible,
+        // o mantener "*" con precaución.
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+
+        // Headers explícitos para evitar bloqueos del navegador
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
@@ -70,22 +81,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Deshabilitado para APIs REST (Stateless)
+                // 1. CORS DEBE IR PRIMERO EN LA CADENA
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // No usamos JSESSIONID
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Peticiones OPTIONS (CORS) siempre permitidas
+                        // 2. PERMITIR OPTIONS EXPLÍCITAMENTE ANTES QUE NADA
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 2. Rutas de Autenticación (Login y Registro)
-                        // Esto permite que /api/auth/login y /api/auth/register sean públicos
+                        // 3. RUTAS PÚBLICAS
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // 3. Recursos públicos (Menú del restaurante)
                         .requestMatchers(HttpMethod.GET, "/api/productos/menu").permitAll()
 
-                        // 4. Reglas por Roles (Ajustadas a tu modelo de negocio)
+                        // 4. SEGURIDAD POR ROLES
                         .requestMatchers("/api/usuarios/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/roles/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/reportes/**").hasAnyRole("ADMIN", "GERENTE")
@@ -95,12 +104,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/cocina/**").hasAnyRole("ADMIN", "GERENTE", "COCINERO")
                         .requestMatchers("/api/turnos/**").hasAnyRole("ADMIN", "GERENTE", "CAJERO")
 
-                        // 5. Cualquier otra ruta requiere Token válido
                         .anyRequest().authenticated()
                 )
-                // Usamos nuestro proveedor con BCrypt y UserDetailsService
                 .authenticationProvider(authenticationProvider())
-                // Inyectamos el filtro JWT antes del filtro de usuario/password de Spring
+                // 5. JWT FILTER DESPUÉS DE CORS PARA NO INTERFERIR EN PREFLIGHT
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
