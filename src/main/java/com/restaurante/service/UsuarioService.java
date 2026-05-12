@@ -85,6 +85,14 @@ public class UsuarioService {
         usuarioRepository.save(usuario);
     }
 
+    @Transactional
+    public void eliminar(Integer id) {
+        if (!usuarioRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Usuario", id);
+        }
+        usuarioRepository.deleteById(id);
+    }
+
     private UsuarioDTO.Response toResponse(Usuario u) {
         UsuarioDTO.Response r = new UsuarioDTO.Response();
         r.setId(u.getId());
@@ -92,8 +100,10 @@ public class UsuarioService {
         r.setEmail(u.getEmail());
         r.setTelefono(u.getTelefono());
         r.setRol(u.getRol().getNombre());
+        r.setRolId(u.getRol().getId());
         r.setActivo(u.getActivo());
         r.setFechaCreacion(u.getFechaCreacion() != null ? u.getFechaCreacion().toString() : null);
+        r.setUltimoAcceso(u.getUltimoAcceso() != null ? u.getUltimoAcceso().toString() : null);
         return r;
     }
 }

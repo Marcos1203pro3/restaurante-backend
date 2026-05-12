@@ -31,6 +31,24 @@ public class CategoriaController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Categoria>> crear(@RequestBody Categoria categoria) {
+        String nombre = categoria.getNombre() != null ? categoria.getNombre().trim() : "";
+
+        if (nombre.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("El nombre de la categoría es obligatorio"));
+        }
+        if (nombre.matches("^\\d+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("El nombre no puede ser solo números"));
+        }
+        boolean existe = categoriaRepository.findByActivoTrueOrderByOrdenMenuAsc()
+                .stream().anyMatch(c -> c.getNombre().equalsIgnoreCase(nombre));
+        if (existe) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Ya existe una categoría con el nombre \"" + nombre + "\""));
+        }
+
+        categoria.setNombre(nombre);
         categoria.setActivo(true);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Categoría creada", categoriaRepository.save(categoria)));
@@ -39,9 +57,22 @@ public class CategoriaController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Categoria>> actualizar(
             @PathVariable Integer id, @RequestBody Categoria datos) {
+        String nombre = datos.getNombre() != null ? datos.getNombre().trim() : "";
+
+        if (nombre.matches("^\\d+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("El nombre no puede ser solo números"));
+        }
+        boolean existe = categoriaRepository.findByActivoTrueOrderByOrdenMenuAsc()
+                .stream().anyMatch(c -> c.getNombre().equalsIgnoreCase(nombre) && !c.getId().equals(id));
+        if (existe) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Ya existe una categoría con el nombre \"" + nombre + "\""));
+        }
+
         Categoria c = categoriaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria", id));
-        c.setNombre(datos.getNombre());
+        c.setNombre(nombre);
         c.setDescripcion(datos.getDescripcion());
         c.setOrdenMenu(datos.getOrdenMenu());
         return ResponseEntity.ok(ApiResponse.ok("Categoría actualizada", categoriaRepository.save(c)));

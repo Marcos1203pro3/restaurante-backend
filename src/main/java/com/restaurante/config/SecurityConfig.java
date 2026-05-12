@@ -53,12 +53,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // IMPORTANTE: Permitir el origen de tu frontend en Render si es posible,
-        // o mantener "*" con precaución.
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // Headers explícitos para evitar bloqueos del navegador
         config.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
@@ -68,7 +64,6 @@ public class SecurityConfig {
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers"
         ));
-
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
@@ -81,20 +76,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CORS DEBE IR PRIMERO EN LA CADENA
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 2. PERMITIR OPTIONS EXPLÍCITAMENTE ANTES QUE NADA
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 3. RUTAS PÚBLICAS
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/productos/menu").permitAll()
+                        // ✅ AGREGADO: permitir /error para que Spring pueda mostrar errores
+                        .requestMatchers("/error").permitAll()
 
-                        // 4. SEGURIDAD POR ROLES
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/productos/menu", "/api/categorias").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/productos/menu").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+
                         .requestMatchers("/api/usuarios/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/roles/**").hasAnyRole("ADMIN", "GERENTE")
                         .requestMatchers("/api/reportes/**").hasAnyRole("ADMIN", "GERENTE")
@@ -107,7 +103,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                // 5. JWT FILTER DESPUÉS DE CORS PARA NO INTERFERIR EN PREFLIGHT
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

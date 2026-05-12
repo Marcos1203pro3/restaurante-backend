@@ -5,4 +5,5 @@ import java.util.List;
 public interface ProductoIngredienteRepository extends JpaRepository<ProductoIngrediente, Long> {
     List<ProductoIngrediente> findByProductoId(Long productoId);
     void deleteByProductoId(Long productoId);
+    boolean existsByInventarioId(Long inventarioId);
 }

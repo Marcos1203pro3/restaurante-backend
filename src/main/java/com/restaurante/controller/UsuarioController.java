@@ -20,7 +20,7 @@ public class UsuarioController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<UsuarioDTO.Response>>> listar() {
-        return ResponseEntity.ok(ApiResponse.ok(usuarioService.listarActivos()));
+        return ResponseEntity.ok(ApiResponse.ok(usuarioService.listarTodos()));
     }
 
     @GetMapping("/{id}")
@@ -46,5 +46,11 @@ public class UsuarioController {
             @PathVariable Integer id, @RequestParam Boolean activo) {
         usuarioService.cambiarEstado(id, activo);
         return ResponseEntity.ok(ApiResponse.ok("Estado actualizado", null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Integer id) {
+        usuarioService.eliminar(id);
+        return ResponseEntity.ok(ApiResponse.ok("Usuario eliminado", null));
     }
 }
