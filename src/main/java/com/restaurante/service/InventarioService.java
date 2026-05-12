@@ -19,6 +19,7 @@ public class InventarioService {
     private final InventarioRepository inventarioRepository;
     private final MovimientoInventarioRepository movimientoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ProductoIngredienteRepository productoIngredienteRepository;
 
     public List<Inventario> listarTodos() {
         return inventarioRepository.findAll();
@@ -64,8 +65,8 @@ public class InventarioService {
 
     @Transactional
     public Inventario ajustarStock(Long inventarioId, BigDecimal cantidad,
-                                    MovimientoInventario.TipoMovimiento tipo,
-                                    String motivo, String emailUsuario) {
+                                   MovimientoInventario.TipoMovimiento tipo,
+                                   String motivo, String emailUsuario) {
         Inventario inv = buscarPorId(inventarioId);
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario).orElse(null);
 
@@ -105,10 +106,19 @@ public class InventarioService {
         return movimientoRepository.findByInventarioIdOrderByFechaDesc(inventarioId);
     }
 
+    @Transactional
     public void eliminar(Long id) {
         Inventario inv = inventarioRepository.findById(id)
-                .orElseThrow(() -> new com.restaurante.exception.ResourceNotFoundException("Ingrediente", id));
+                .orElseThrow(() -> new ResourceNotFoundException("Ingrediente", id));
+
+        // I-007 FIX: verificar si el ingrediente está en alguna receta
+        boolean tieneReceta = productoIngredienteRepository.existsByInventarioId(id);
+        if (tieneReceta) {
+            throw new BusinessException(
+                    "No se puede eliminar \"" + inv.getNombreIngrediente() + "\" porque está asociado a una o más recetas. Quítalo de las recetas primero."
+            );
+        }
+
         inventarioRepository.delete(inv);
     }
-
 }

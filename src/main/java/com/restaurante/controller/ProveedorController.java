@@ -31,6 +31,22 @@ public class ProveedorController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Proveedor>> crear(@RequestBody Proveedor proveedor) {
+        String nombre = proveedor.getNombre() != null ? proveedor.getNombre().trim() : "";
+
+        if (nombre.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("El nombre es obligatorio"));
+        }
+
+        // Validar duplicado
+        boolean existe = proveedorRepository.findByActivoTrue()
+                .stream().anyMatch(p -> p.getNombre().equalsIgnoreCase(nombre));
+        if (existe) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Ya existe un proveedor con el nombre \"" + nombre + "\""));
+        }
+
+        proveedor.setNombre(nombre);
         proveedor.setActivo(true);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Proveedor creado", proveedorRepository.save(proveedor)));
@@ -39,9 +55,19 @@ public class ProveedorController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Proveedor>> actualizar(
             @PathVariable Long id, @RequestBody Proveedor datos) {
+        String nombre = datos.getNombre() != null ? datos.getNombre().trim() : "";
+
+        // Validar duplicado excluyendo el actual
+        boolean existe = proveedorRepository.findByActivoTrue()
+                .stream().anyMatch(p -> p.getNombre().equalsIgnoreCase(nombre) && !p.getId().equals(id));
+        if (existe) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Ya existe un proveedor con el nombre \"" + nombre + "\""));
+        }
+
         Proveedor p = proveedorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Proveedor", id));
-        p.setNombre(datos.getNombre());
+        p.setNombre(nombre);
         p.setRazonSocial(datos.getRazonSocial());
         p.setRucNit(datos.getRucNit());
         p.setTelefono(datos.getTelefono());
@@ -59,5 +85,13 @@ public class ProveedorController {
         p.setActivo(activo);
         proveedorRepository.save(p);
         return ResponseEntity.ok(ApiResponse.ok("Estado actualizado", null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Long id) {
+        Proveedor p = proveedorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor", id));
+        proveedorRepository.delete(p);
+        return ResponseEntity.ok(ApiResponse.ok("Proveedor eliminado", null));
     }
 }

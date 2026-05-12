@@ -60,8 +60,17 @@ public class ReservaController {
                 .usuario(usuario)
                 .build();
 
-        mesa.setEstado(Mesa.EstadoMesa.RESERVADA);
-        mesaRepository.save(mesa);
+        // BUG 13 FIX: solo bloquear la mesa si la reserva es HOY
+        // Si es a futuro, la mesa queda libre para usarse hoy
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime inicioDia = ahora.toLocalDate().atStartOfDay();
+        LocalDateTime finDia = inicioDia.plusDays(1);
+        if (request.getFechaReserva() != null &&
+                request.getFechaReserva().isAfter(inicioDia) &&
+                request.getFechaReserva().isBefore(finDia)) {
+            mesa.setEstado(Mesa.EstadoMesa.RESERVADA);
+            mesaRepository.save(mesa);
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Reserva creada", reservaRepository.save(reserva)));

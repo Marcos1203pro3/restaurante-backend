@@ -33,8 +33,6 @@ public class Factura {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
-    // --- CORRECCIONES CON @Builder.Default ---
-
     @Builder.Default
     @Column(precision = 10, scale = 2)
     private BigDecimal impuesto = BigDecimal.ZERO;
@@ -54,20 +52,22 @@ public class Factura {
     @Column(name = "metodo_pago", nullable = false)
     private MetodoPago metodoPago;
 
+    @Builder.Default
     @Column(name = "monto_pagado", precision = 10, scale = 2)
-    private BigDecimal montoPagado;
+    private BigDecimal montoPagado = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(precision = 10, scale = 2)
-    private BigDecimal cambio;
+    private BigDecimal cambio = BigDecimal.ZERO;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private EstadoFactura estado = EstadoFactura.EMITIDA;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime fecha = LocalDateTime.now();
-
-    // --- RELACIONES ---
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

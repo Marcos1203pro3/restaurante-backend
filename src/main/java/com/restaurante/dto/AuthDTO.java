@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 public class AuthDTO {
 
     @Data
-    @NoArgsConstructor // Vital para que Jackson pueda instanciar el DTO
+    @NoArgsConstructor
     @AllArgsConstructor
     public static class LoginRequest {
         @NotBlank(message = "El email es obligatorio")
@@ -38,4 +38,37 @@ public class AuthDTO {
             this.rol = rol;
         }
     }
+
+    // ✅ NUEVO: Registro de usuario
+    @Data
+    public static class RegisterRequest {
+        private String nombre;
+        private String email;
+        private String password;
+        private String telefono;
+    }
+
+    // ✅ NUEVO: Solicitud para recuperar contraseña
+    @Data
+    public static class ForgotPasswordRequest {
+        private String email;
+    }
+
+    // ✅ NUEVO: Resetear contraseña
+    @Data
+    public static class ResetPasswordRequest {
+        private String token;
+        private String nuevaPassword;
+    }
+
+    // ✅ NUEVO: Google Login
+    @Data
+    public static class GoogleRequest {
+        private String email;
+        private String nombre;
+        private String googleId;
+        private Boolean soloExistentes;
+    }
+
+
 }

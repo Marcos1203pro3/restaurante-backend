@@ -25,7 +25,9 @@ public class UsuarioDTO {
         private String email;
         private String telefono;
         private String rol;
+        private Integer rolId;
         private Boolean activo;
         private String fechaCreacion;
+        private String ultimoAcceso;
     }
 }

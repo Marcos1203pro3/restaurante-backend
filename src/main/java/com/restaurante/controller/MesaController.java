@@ -33,6 +33,11 @@ public class MesaController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Mesa>> crear(@RequestBody MesaRequest request) {
+        // BUG M-002 FIX: mensaje claro cuando el número de mesa ya existe
+        if (mesaRepository.findByNumero(request.getNumero()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Ya existe una mesa con el número " + request.getNumero()));
+        }
         Mesa mesa = Mesa.builder()
                 .numero(request.getNumero())
                 .capacidad(request.getCapacidad())
@@ -63,6 +68,19 @@ public class MesaController {
                 .orElseThrow(() -> new ResourceNotFoundException("Mesa", id));
         mesa.setEstado(Mesa.EstadoMesa.valueOf(estado));
         return ResponseEntity.ok(ApiResponse.ok("Estado actualizado", mesaRepository.save(mesa)));
+    }
+
+    // BUG M-005 FIX: endpoint de eliminar que antes no existía
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Integer id) {
+        Mesa mesa = mesaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Mesa", id));
+        if (mesa.getEstado() != Mesa.EstadoMesa.LIBRE) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Solo se pueden eliminar mesas en estado Libre"));
+        }
+        mesaRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Mesa eliminada correctamente", null));
     }
 
     @Data
